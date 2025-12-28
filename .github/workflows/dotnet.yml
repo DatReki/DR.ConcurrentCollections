@@ -15,10 +15,18 @@ jobs:
         dotnet-version: 10.0.x
     - name: Restore dependencies
       run: dotnet restore
-    - name: Build
-      run: dotnet build --no-restore
-    - name: Test
-      run: dotnet test --no-build --verbosity normal
+    - name: Build .NET 10
+      run: dotnet build -f net10.0 --no-restore
+    - name: Test .NET 10
+      run: dotnet test -f net10.0 --no-build --verbosity normal
+    - name: Build .NET 9
+      run: dotnet build -f net9.0 --no-restore
+    - name: Test .NET 9
+      run: dotnet test -f net9.0 --no-build --verbosity normal
+    - name: Build .NET 8
+      run: dotnet build -f net8.0 --no-restore
+    - name: Test .NET 8
+      run: dotnet test -f net8.0 --no-build --verbosity normal
   
   windows:
     runs-on: windows-2019
@@ -27,10 +35,18 @@ jobs:
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
-        dotnet-version: 8.0.x
+        dotnet-version: 10.0.x
     - name: Restore dependencies
       run: dotnet restore
-    - name: Build
+    - name: Build .NET 10
+      run: dotnet build -f net10.0 --no-restore
+    - name: Test .NET 10
+      run: dotnet test -f net10.0 --no-build --verbosity normal
+    - name: Build .NET Framework 4.8.1
+      run: dotnet build -f net481 --no-restore
+    - name: Test .NET Framework 4.8.1
+      run: dotnet test -f net481 --no-build --verbosity normal
+    - name: Build .NET Framework 4.6.2
       run: dotnet build -f net462 --no-restore
-    - name: Test
+    - name: Test .NET Framework 4.6.2
       run: dotnet test -f net462 --no-build --verbosity normal
