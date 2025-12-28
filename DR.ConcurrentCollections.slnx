@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="DR.ConcurrentCollections/DR.ConcurrentCollections.csproj" />
+  <Project Path="Tests/Tests.csproj" Id="e06fd877-43d5-4146-a0eb-08c644cb1bdf" />
+</Solution>
