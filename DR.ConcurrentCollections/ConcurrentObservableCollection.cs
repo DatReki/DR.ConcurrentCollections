@@ -314,6 +314,14 @@ namespace DR.ConcurrentCollections
             => _items.IndexOf(item);
 
         /// <summary>
+        /// Searches for an element that matches the conditions defined by the specified predicate, and returns the first occurrence within the entire collection.
+        /// </summary>
+        /// <param name="match"></param>
+        /// <returns></returns>
+        public T? Find(Predicate<T> match)
+            => _items.Find(match);
+
+        /// <summary>
         /// Determines whether the collection contains the specific <paramref name="item"/>.
         /// </summary>
         /// <param name="item"></param>

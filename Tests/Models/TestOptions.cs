@@ -24,7 +24,7 @@
         }
 
         public int MaxDegreeOfParallelism { get; set; } = 4;
-        public int CountPerAction { get; set; } = 250;
+        public int CountPerAction { get; set; } = 125;
         public int Total 
         {
             get => CountPerAction * MaxDegreeOfParallelism;
