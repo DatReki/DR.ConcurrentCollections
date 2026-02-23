@@ -9,12 +9,12 @@
     <Authors>DatReki</Authors>
 		<Description>A small library for thread safe collections</Description>
 		<PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
-		<PackageReleaseNotes>Initial release</PackageReleaseNotes>
+		<PackageReleaseNotes>Added "Find" method</PackageReleaseNotes>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<PackageTags>thread-safe collections ConcurrentObservableCollection ObservableCollection</PackageTags>
 		<RepositoryType>git</RepositoryType>
 		<RepositoryUrl>https://github.com/DatReki/DR.ConcurrentCollections</RepositoryUrl>
-		<VersionPrefix>1.0.0</VersionPrefix>
+		<VersionPrefix>1.0.1</VersionPrefix>
 		<AssemblyVersion></AssemblyVersion>
 		<FileVersion></FileVersion>
 		<Title>$(AssemblyName)</Title>
