@@ -72,8 +72,8 @@ jobs:
     - name: Test .NET Framework 4.8.1
       run: dotnet test -f net481 --no-build --verbosity normal
 
-  windows_2019:
-    runs-on: windows-2019
+  windows_2022:
+    runs-on: windows-2022
     steps:
     - uses: actions/checkout@v4
     - name: Setup .NET
