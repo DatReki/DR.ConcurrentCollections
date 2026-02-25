@@ -36,5 +36,23 @@
 
             return false;
         }
+
+        internal static void AddRange<T>(this SynchronizedCollection<T> bag, List<T> items)
+        {
+            lock (bag)
+            {
+                for (int i = 0; i < items.Count; i++)
+                    bag.Add(items[i]);
+            }
+        }
+
+        internal static void RemoveAll<T>(this SynchronizedCollection<T> bag, List<T> items)
+        {
+            lock (bag)
+            {
+                for (int i = 0; i < items.Count; i++)
+                    bag.Remove(items[i]);
+            }
+        }
     }
 }

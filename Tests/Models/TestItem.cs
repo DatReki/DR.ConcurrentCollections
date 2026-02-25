@@ -4,24 +4,24 @@ using Tests.Core;
 
 namespace Tests.Models
 {
-    public class Item
+    public class TestItem
     {
-        public Item() { }
+        public TestItem() { }
 
-        public Item(Faker faker) 
+        public TestItem(Faker faker) 
         {
             Id = GetId(faker);
-            Value = new ItemValue(faker);
+            Value = new TestItemValue(faker);
         }
 
-        public Item(string id, ItemValue value)
+        public TestItem(string id, TestItemValue value)
         {
             Id = id;
             Value = value;
         }
 
         public string Id { get; set; } = string.Empty;
-        public ItemValue Value { get; set; } = new ItemValue();
+        public TestItemValue Value { get; set; } = new TestItemValue();
 
         public static string GetId(Faker faker)
             => $"{Stopwatch.GetTimestamp()}-{Guid.NewGuid()}-{Generate.RandomString(5, 10, faker)}";

@@ -3,13 +3,13 @@ using Tests.Core;
 
 namespace Tests.Models
 {
-    public class ItemValue
+    public class TestItemValue
     {
         private static Length TextLength { get; set; } = new(10, 200);
         private static Length RandomLength { get; set; } = new(10, 200);
         private static Length NumberRange { get; set; } = new(10, 1000);
 
-        public ItemValue()
+        public TestItemValue()
         {
             Faker faker = new();
             Guid = Generate.RandomGuid(faker);
@@ -18,7 +18,7 @@ namespace Tests.Models
             Number = Generate.RandomNumber(NumberRange.Min, NumberRange.Max, faker: faker);
         }
 
-        public ItemValue(Faker faker)
+        public TestItemValue(Faker faker)
         {
             Guid = Generate.RandomGuid(faker);
             Text = Generate.RandomText(TextLength.Min, TextLength.Max, faker);

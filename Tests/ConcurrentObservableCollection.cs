@@ -9,46 +9,48 @@ namespace Tests
     [TestFixture]
     public class ConcurrentObservableCollection
     {
-        private Faker _faker;
-        private TestOptions _testOptions;
-        private ParallelOptions _parallelOptions;
+        private Faker Faker;
+        private TestOptions TestOptions;
+        private ParallelOptions ParallelOptions;
         private static List<EventListenerData> EventCalls = [];
-        private static DR.ConcurrentCollections.ConcurrentObservableCollection<Item> Collection = [];
+        private static DR.ConcurrentCollections.ConcurrentObservableCollection<TestItem> Collection = [];
+        private static readonly SynchronizedCollection<TestItem> Reserve = [];
+
+#pragma warning disable NUnit1032 // An IDisposable field/property should be Disposed in a TearDown method
+        internal static readonly SemaphoreSlim Slim = new(1);
+#pragma warning restore NUnit1032 // An IDisposable field/property should be Disposed in a TearDown method
 
         [SetUp]
-        public void Configure()
+        public async Task Configure()
         {
-            _faker = new Faker();
             Collection = [];
             EventCalls = [];
-            _testOptions = new TestOptions();
-            _parallelOptions = new ParallelOptions()
-            {
-                MaxDegreeOfParallelism = _testOptions.MaxDegreeOfParallelism,
-            };
+            Faker = Main.Faker;
+            TestOptions = Main.TestOptions;
+            ParallelOptions = Main.ParallelOptions;
         }
 
         [Test]
-        public void Get()
+        public async Task Get()
         {
-            FillCollection(false, true);
+            await FillCollection();
             if (Collection.Count == 0)
                 Assert.Fail("Collection is empty");
 
-            int index = Generate.RandomNumber(0, Collection.Count - 1, faker: _faker);
-            Item item = Collection[index];
+            int index = Generate.RandomNumber(0, Collection.Count - 1, faker: Faker);
+            TestItem item = Collection[index];
 
             Assert.That(item, Is.EqualTo(Collection.ElementAt(index)), "Item is different");
         }
 
         [Test]
-        public void GetRange()
+        public async Task GetRange()
         {
-            FillCollection(false, true);
+            await FillCollection();
             if (Collection.Count == 0)
                 Assert.Fail("Collection is empty");
 
-            List<Item> copy = Collection.GetRange(0, Collection.Count);
+            List<TestItem> copy = Collection.GetRange(0, Collection.Count);
             if (copy.Count != Collection.Count)
                 Assert.Fail("Collection does not have the expected length");
 
@@ -58,9 +60,9 @@ namespace Tests
                     Assert.Fail("Collection does not contain element");
             }
 
-            int index = Generate.RandomNumber(1, Collection.Count - 100, faker: _faker);
-            int count = Generate.RandomNumber(5, Collection.Count - index, faker: _faker);
-            List<Item> range = Collection.GetRange(index, count);
+            int index = Generate.RandomNumber(1, Collection.Count - 100, faker: Faker);
+            int count = Generate.RandomNumber(5, Collection.Count - index, faker: Faker);
+            List<TestItem> range = Collection.GetRange(index, count);
 
             if (range.Count != count)
                 Assert.Fail("Range does not have the expected length");
@@ -75,41 +77,41 @@ namespace Tests
         }
 
         [Test]
-        public void Add()
+        public async Task Add()
         {
             Collection.Clear();
             if (Collection.Count != 0)
                 Assert.Fail("Could not clear collection");
 
-            FillCollection(false, true);
+            await FillCollection();
             if (Collection.Count == 0)
                 Assert.Fail("Collection is empty");
 
-            Assert.That(_testOptions.Total, Is.EqualTo(Collection.Count), "The collection has an unexpected count");
+            Assert.That(TestOptions.Total, Is.EqualTo(Collection.Count), "The collection has an unexpected count");
         }
 
         [Test]
-        public void AddParallel()
+        public async Task AddParallel()
         {
             Collection.Clear();
             if (Collection.Count != 0)
                 Assert.Fail("Could not clear collection");
 
-            FillCollection(true, true);
+            await FillCollection();
             if (Collection.Count == 0)
                 Assert.Fail("Collection is empty");
 
-            Assert.That(_testOptions.Total, Is.EqualTo(Collection.Count), "The collection has an unexpected count");
+            Assert.That(TestOptions.Total, Is.EqualTo(Collection.Count), "The collection has an unexpected count");
         }
 
         [Test]
-        public void AddRange()
+        public async Task AddRange()
         {
             Collection.Clear();
             if (Collection.Count != 0)
                 Assert.Fail("Could not clear collection");
 
-            List<Item> items = GetItems(_testOptions.Total, true);
+            List<TestItem> items = await GetItems(TestOptions.Total);
             Collection.AddRange(items);
 
             if (Collection.Count == 0)
@@ -123,34 +125,34 @@ namespace Tests
         }
 
         [Test]
-        public void AddRangeParallel()
+        public async Task AddRangeParallel()
         {
             Collection.Clear();
             if (Collection.Count != 0)
                 Assert.Fail("Could not clear collection");
 
             ConcurrentBag<int> numbers = [];
-            while (numbers.Sum() < _testOptions.Total)
+            while (numbers.Sum() < TestOptions.Total)
             {
                 int number = Generate.RandomNumber(1, 100);
                 int sum = numbers.Sum();
-                if (sum + number > _testOptions.Total)
-                    number = Generate.RandomNumber(1, _testOptions.Total - sum);
+                if (sum + number > TestOptions.Total)
+                    number = Generate.RandomNumber(1, TestOptions.Total - sum);
 
                 numbers.Add(number);
             }
 
-            if (numbers.Sum() != _testOptions.Total)
+            if (numbers.Sum() != TestOptions.Total)
                 Assert.Fail("Was unable to add together the correct amount of numbers");
 
-            Parallel.For(0, numbers.Count, _parallelOptions, i =>
+            Parallel.For(0, numbers.Count, ParallelOptions, async i =>
             {
-                Collection.AddRange(GetItems(numbers.ElementAt(i), false));
+                Collection.AddRange(await GetItems(numbers.ElementAt(i)));
             });
 
             if (Collection.Count == 0)
                 Assert.Fail("Collection is empty");
-            else if (Collection.Count != _testOptions.Total)
+            else if (Collection.Count != TestOptions.Total)
                 Assert.Fail("Collection has an unexpected count");
 
             Collection.Clear();
@@ -161,9 +163,9 @@ namespace Tests
         }
 
         [Test]
-        public void Clear()
+        public async Task Clear()
         {
-            FillCollection(false, true);
+            await FillCollection();
             if (Collection.Count == 0)
                 Assert.Fail("Collection is empty");
 
@@ -172,13 +174,13 @@ namespace Tests
         }
 
         [Test]
-        public void CopyTo()
+        public async Task CopyTo()
         {
-            FillCollection(false, true);
+            await FillCollection();
             if (Collection.Count == 0)
                 Assert.Fail("Collection is empty");
 
-            Item[] copy = new Item[Collection.Count];
+            TestItem[] copy = new TestItem[Collection.Count];
             Collection.CopyTo(copy, 0);
 
             if (copy.Length != Collection.Count)
@@ -194,9 +196,9 @@ namespace Tests
         }
 
         [Test]
-        public void IndexOf()
+        public async Task IndexOf()
         {
-            FillCollection(false, true);
+            await FillCollection();
             int index = Generate.RandomNumber(0, Collection.Count - 1);
             int foundIndex = Collection.IndexOf(Collection[index]);
 
@@ -204,45 +206,57 @@ namespace Tests
         }
 
         [Test]
-        public void IndexOfParallel()
+        public async Task IndexOfParallel()
         {
             ConcurrentBag<int> indexes = [];
-            FillCollection(true, true);
+            await FillCollection();
 
             int GetIndex()
             {
                 lock (indexes)
                 {
-                    int index = Generate.RandomNumber(0, Collection.Count - 1, indexes, _faker);
+                    int index = Generate.RandomNumber(0, Collection.Count - 1, indexes, Faker);
                     indexes.Add(index);
 
                     return index;
                 }
             }
 
-            Parallel.For(0, 50, _parallelOptions, i =>
+            IEnumerable<Task> tasks = Enumerable.Range(0, 50).Select(x =>
             {
-                int index = GetIndex();
-                int foundIndex = Collection.IndexOf(Collection[index]);
+                return Task.Run(async () =>
+                {
+                    await Slim.WaitAsync();
+                    try
+                    {
+                        int index = GetIndex();
+                        int foundIndex = Collection.IndexOf(Collection[index]);
 
-                if (foundIndex != index)
-                    Assert.Fail("Indexes don't match");
+                        if (foundIndex != index)
+                            Assert.Fail("Indexes don't match");
+                    }
+                    finally
+                    {
+                        Slim.Release();
+                    }
+                });
             });
 
+            await Task.WhenAll(tasks);
             Assert.Pass();
         }
 
         [Test]
-        public void Find()
+        public async Task Find()
         {
-            FillCollection(false, true);
-            for (int i = 0; i < Generate.RandomNumber(2, 10, faker: _faker); i++)
+            await FillCollection();
+            for (int i = 0; i < Generate.RandomNumber(2, 10, faker: Faker); i++)
             {
                 int index = Generate.RandomNumber(0, Collection.Count - 1);
-                Item found = Collection[index];
+                TestItem found = Collection[index];
 
                 object oldValue = found.Value;
-                ItemValue newValue = GetValue(true);
+                TestItemValue newValue = GetValue(true);
 
                 Collection.Find(x => x.Id == found.Id)?.Value = newValue;
                 if (Collection[index].Value != newValue)
@@ -256,12 +270,12 @@ namespace Tests
         }
 
         [Test]
-        public void FindParallel()
+        public async Task FindParallel()
         {
-            FillCollection(true, true);
+            await FillCollection();
 
             List<int> indexes = [];
-            for (int i = 0; i < Generate.RandomNumber(2, 50, faker: _faker); i++)
+            for (int i = 0; i < Generate.RandomNumber(2, 50, faker: Faker); i++)
             {
                 int index = Generate.RandomNumber(0, Collection.Count - 1);
                 while (indexes.Contains(index))
@@ -270,12 +284,12 @@ namespace Tests
                 indexes.Add(index);
             }
 
-            Parallel.For(0, indexes.Count - 1, _parallelOptions, i =>
+            Parallel.For(0, indexes.Count - 1, ParallelOptions, i =>
             {
                 int index = indexes[i];
-                Item found = Collection[index];
+                TestItem found = Collection[index];
                 object oldValue = found.Value;
-                ItemValue newValue = GetValue(true);
+                TestItemValue newValue = GetValue(true);
 
                 Collection.Find(x => x.Id == found.Id)?.Value = newValue;
                 if (Collection[index].Value != newValue)
@@ -289,12 +303,12 @@ namespace Tests
         }
 
         [Test]
-        public void Insert()
+        public async Task Insert()
         {
-            FillCollection(false, true);
-            Item item = GetItem(true);
-            int index = Generate.RandomNumber(0, Collection.Count - 1, faker: _faker);
-            Item oldItem = Collection[index];
+            await FillCollection();
+            TestItem item = GetItem(true);
+            int index = Generate.RandomNumber(0, Collection.Count - 1, faker: Faker);
+            TestItem oldItem = Collection[index];
 
             Collection.Insert(index, item);
             if (Collection[index] == oldItem)
@@ -308,40 +322,49 @@ namespace Tests
         }
 
         [Test]
-        public void InsertParallel()
+        public async Task InsertParallel()
         {
-            FillCollection(true, true);
-            Parallel.For(0, 50, _parallelOptions, i =>
+            await FillCollection();
+            IEnumerable<Task> tasks = Enumerable.Range(0, 50).Select(x =>
             {
-                lock (Collection)
+                return Task.Run(async () =>
                 {
-                    Item item = GetItem(true);
-                    int index = Generate.RandomNumber(0, Collection.Count - 1, faker: _faker);
-                    Item oldItem = Collection[index];
+                    await Slim.WaitAsync();
+                    try
+                    {
+                        TestItem item = GetItem(true);
+                        int index = Generate.RandomNumber(0, Collection.Count - 1, faker: Faker);
+                        TestItem oldItem = Collection[index];
 
-                    Collection.Insert(index, item);
-                    if (Collection[index] == oldItem)
-                        Assert.Fail("Insert failed");
-                    else if (!Collection.Contains(oldItem))
-                        Assert.Fail("Collection no longer contains the old item");
-                    else if (!Collection.Contains(item))
-                        Assert.Fail("Collection does not contain the new item");
-                    else if (Collection[index] != item)
-                        Assert.Fail("Unable to get new item");
-                }
+                        Collection.Insert(index, item);
+                        if (Collection[index] == oldItem)
+                            Assert.Fail("Insert failed");
+                        else if (!Collection.Contains(oldItem))
+                            Assert.Fail("Collection no longer contains the old item");
+                        else if (!Collection.Contains(item))
+                            Assert.Fail("Collection does not contain the new item");
+                        else if (Collection[index] != item)
+                            Assert.Fail("Unable to get new item");
+                    }
+                    finally
+                    {
+                        Slim.Release();
+                    }
+                });
             });
 
+            await Task.WhenAll(tasks);
             Assert.Pass();
         }
 
         [Test]
-        public void InsertRange()
+        public async Task InsertRange()
         {
-            FillCollection(false, true);
+            await FillCollection();
             int oldCount = Collection.Count;
 
-            List<Item> items = GetItems(100, true);
-            int index = Generate.RandomNumber(0, Collection.Count - 1, faker: _faker);
+            List<TestItem> items = await GetItems(100);
+            int index = Generate.RandomNumber(0, Collection.Count - 1, faker: Faker);
 
             Collection.InsertRange(index, items);
             int newCount = Collection.Count;
@@ -357,46 +380,56 @@ namespace Tests
         }
 
         [Test]
-        public void InsertRangeParallel()
+        public async Task InsertRangeParallel()
         {
-            FillCollection(true, true);
-            Parallel.For(0, 50, _parallelOptions, i =>
+            await FillCollection();
+
+            IEnumerable<Task> tasks = Enumerable.Range(0, 50).Select(x =>
             {
-                lock (Collection)
+                return Task.Run(async () =>
                 {
-                    int oldCount = Collection.Count;
-                    List<Item> items = GetItems(10, true);
-                    int index = Generate.RandomNumber(0, Collection.Count - 1, faker: _faker);
+                    await Slim.WaitAsync();
+                    try
+                    {
+                        int oldCount = Collection.Count;
+                        List<TestItem> items = await GetItems(10);
+                        int index = Generate.RandomNumber(0, Collection.Count - 1, faker: Faker);
 
-                    Collection.InsertRange(index, items);
-                    int newCount = Collection.Count;
+                        Collection.InsertRange(index, items);
+                        int newCount = Collection.Count;
 
-                    if (Collection.Count == oldCount)
-                        Assert.Fail("Count has not changed");
-                    else if (Collection.Count != newCount || Collection.Count != (oldCount + items.Count))
-                        Assert.Fail("The updated count is not the expected count");
-                    else if (!items.All(static x => Collection.Contains(x)))
-                        Assert.Fail("Collection does not contain all of the expected items");
-                }
+                        if (Collection.Count == oldCount)
+                            Assert.Fail("Count has not changed");
+                        else if (Collection.Count != newCount || Collection.Count != (oldCount + items.Count))
+                            Assert.Fail("The updated count is not the expected count");
+                        else if (!items.All(static x => Collection.Contains(x)))
+                            Assert.Fail("Collection does not contain all of the expected items");
+                    }
+                    finally
+                    {
+                        Slim.Release();
+                    }
+                });
             });
 
+            await Task.WhenAll(tasks);
             Assert.Pass();
         }
 
         [Test]
-        public void Move()
+        public async Task Move()
         {
-            FillCollection(false, true);
+            await FillCollection();
 
             ConcurrentBag<int> indexes = [];
-            int oldIndex = Generate.RandomNumber(0, Collection.Count - 1, indexes, _faker);
+            int oldIndex = Generate.RandomNumber(0, Collection.Count - 1, indexes, Faker);
             indexes.Add(oldIndex);
 
-            int newIndex = Generate.RandomNumber(0, Collection.Count - 1, indexes, _faker);
+            int newIndex = Generate.RandomNumber(0, Collection.Count - 1, indexes, Faker);
             indexes.Add(newIndex);
 
-            Item moveItem = Collection[oldIndex];
-            Item relocatedItem = Collection[newIndex];
+            TestItem moveItem = Collection[oldIndex];
+            TestItem relocatedItem = Collection[newIndex];
 
             Collection.Move(oldIndex, newIndex);
             if (!Collection.Contains(relocatedItem))
@@ -414,12 +447,12 @@ namespace Tests
         }
 
         [Test]
-        public void Remove()
+        public async Task Remove()
         {
-            FillCollection(false, true);
+            await FillCollection();
 
-            int index = Generate.RandomNumber(0, Collection.Count - 1, faker: _faker);
-            Item item = Collection[index];
+            int index = Generate.RandomNumber(0, Collection.Count - 1, faker: Faker);
+            TestItem item = Collection[index];
             bool removed = Collection.Remove(item);
 
             if (!removed)
@@ -431,76 +464,94 @@ namespace Tests
         }
 
         [Test]
-        public void RemoveParallel()
+        public async Task RemoveParallel()
         {
-            FillCollection(true, true);
+            await FillCollection();
             ConcurrentBag<int> indexes = [];
 
-            Parallel.For(0, 50, _parallelOptions, i =>
+            IEnumerable<Task> tasks = Enumerable.Range(0, 50).Select(x =>
             {
-                lock (Collection)
+                return Task.Run(async () =>
                 {
-                    int index = Generate.RandomNumber(0, Collection.Count - 1, indexes, _faker);
-                    indexes.Add(index);
+                    await Slim.WaitAsync();
+                    try
+                    {
+                        int index = Generate.RandomNumber(0, Collection.Count - 1, indexes, Faker);
+                        indexes.Add(index);
 
-                    Item item = Collection[index];
-                    bool removed = Collection.Remove(item);
+                        TestItem item = Collection[index];
+                        bool removed = Collection.Remove(item);
 
-                    if (!removed)
-                        Assert.Fail("Item could not be removed");
-                    else if (Collection.Contains(item))
-                        Assert.Fail("The item that was supposed to be removed still exists");
-                }
+                        if (!removed)
+                            Assert.Fail("Item could not be removed");
+                        else if (Collection.Contains(item))
+                            Assert.Fail("The item that was supposed to be removed still exists");
+                    }
+                    finally
+                    {
+                        Slim.Release();
+                    }
+                });
             });
 
+            await Task.WhenAll(tasks);
             Assert.Pass();
         }
 
         [Test]
-        public void RemoveAt()
+        public async Task RemoveAt()
         {
-            FillCollection(false, true);
+            await FillCollection();
 
-            int index = Generate.RandomNumber(0, Collection.Count - 1, faker: _faker);
-            Item item = Collection[index];
+            int index = Generate.RandomNumber(0, Collection.Count - 1, faker: Faker);
+            TestItem item = Collection[index];
 
             Collection.RemoveAt(index);
             Assert.That(Collection, Does.Not.Contain(item), "The item that was supposed to be removed still exists");
         }
 
         [Test]
-        public void RemoveAtParallel()
+        public async Task RemoveAtParallel()
         {
-            FillCollection(true, true);
+            await FillCollection();
             ConcurrentBag<int> indexes = [];
 
-            Parallel.For(0, 50, _parallelOptions, i =>
+            IEnumerable<Task> tasks = Enumerable.Range(0, 50).Select(x =>
             {
-                lock (Collection)
+                return Task.Run(async () =>
                 {
-                    int index = Generate.RandomNumber(0, Collection.Count - 1, faker: _faker);
-                    indexes.Add(index);
+                    await Slim.WaitAsync();
+                    try
+                    {
+                        int index = Generate.RandomNumber(0, Collection.Count - 1, faker: Faker);
+                        indexes.Add(index);
 
-                    Item item = Collection[index];
-                    Collection.RemoveAt(index);
-                    if (Collection.Contains(item))
-                        Assert.Fail("The item that was supposed to be removed still exists");
-                }
+                        TestItem item = Collection[index];
+                        Collection.RemoveAt(index);
+                        if (Collection.Contains(item))
+                            Assert.Fail("The item that was supposed to be removed still exists");
+                    }
+                    finally
+                    {
+                        Slim.Release();
+                    }
+                });
             });
 
+            await Task.WhenAll(tasks);
             Assert.Pass();
         }
 
         [Test]
-        public void RemoveRange()
+        public async Task RemoveRange()
         {
-            FillCollection(false, true);
+            await FillCollection();
 
-            int index = Generate.RandomNumber(0, Collection.Count - 100, faker: _faker);
-            int count = Generate.RandomNumber(5, Math.Abs(Collection.Count - index), faker: _faker);
+            int index = Generate.RandomNumber(0, Collection.Count - 100, faker: Faker);
+            int count = Generate.RandomNumber(5, Math.Abs(Collection.Count - index), faker: Faker);
             int oldCount = Collection.Count;
 
-            List<Item> removed = Collection.GetRange(index, count);
+            List<TestItem> removed = Collection.GetRange(index, count);
             Collection.RemoveRange(index, count);
 
             if (Collection.Count == oldCount)
@@ -514,41 +565,50 @@ namespace Tests
         }
 
         [Test]
-        public void RemoveRangeParallel()
+        public async Task RemoveRangeParallel()
         {
-            FillCollection(true, true);
+            await FillCollection();
 
-            Parallel.For(0, 50, _parallelOptions, i =>
+            IEnumerable<Task> tasks = Enumerable.Range(0, 50).Select(x =>
             {
-                lock (Collection)
+                return Task.Run(async () =>
                 {
-                    int index = Generate.RandomNumber(0, Collection.Count - 10, faker: _faker);
-                    int count = Generate.RandomNumber(5, 10, faker: _faker);
-                    int oldCount = Collection.Count;
+                    await Slim.WaitAsync();
+                    try
+                    {
+                        int index = Generate.RandomNumber(0, Collection.Count - 10, faker: Faker);
+                        int count = Generate.RandomNumber(5, 10, faker: Faker);
+                        int oldCount = Collection.Count;
 
-                    List<Item> removed = Collection.GetRange(index, count);
-                    Collection.RemoveRange(index, count);
+                        List<TestItem> removed = Collection.GetRange(index, count);
+                        Collection.RemoveRange(index, count);
 
-                    if (Collection.Count == oldCount)
-                        Assert.Fail("Count has not changed");
-                    else if (Collection.Count != (oldCount - removed.Count))
-                        Assert.Fail("The updated count is not the expected count");
-                    else if (removed.Any(Collection.Contains))
-                        Assert.Fail("Not all of the expected items have been removed");
-                }
+                        if (Collection.Count == oldCount)
+                            Assert.Fail("Count has not changed");
+                        else if (Collection.Count != (oldCount - removed.Count))
+                            Assert.Fail("The updated count is not the expected count");
+                        else if (removed.Any(Collection.Contains))
+                            Assert.Fail("Not all of the expected items have been removed");
+                    }
+                    finally
+                    {
+                        Slim.Release();
+                    }
+                });
             });
 
+            await Task.WhenAll(tasks);
             Assert.Pass();
         }
 
         [Test]
-        public void RemoveAll()
+        public async Task RemoveAll()
         {
-            FillCollection(false, true);
+            await FillCollection();
 
             int oldCount = Collection.Count;
             int toAdd = Generate.RandomNumber(10, Collection.Count);
-            List<Item> newItems = GetItems(toAdd, true);
+            List<TestItem> newItems = await GetItems(toAdd);
 
             Collection.AddRange(newItems);
             if (Collection.Count != (oldCount + toAdd))
@@ -564,31 +624,40 @@ namespace Tests
         }
 
         [Test]
-        public void RemoveAllParallel()
+        public async Task RemoveAllParallel()
         {
-            FillCollection(true, true);
+            await FillCollection();
 
             int oldCount = Collection.Count;
-            Parallel.For(0, 50, _parallelOptions, x =>
+            IEnumerable<Task> tasks = Enumerable.Range(0, 50).Select(x =>
             {
-                lock (Collection)
+                return Task.Run(async () =>
                 {
-                    int tmpCount = Collection.Count;
-                    int toAdd = Generate.RandomNumber(10, 20);
-                    List<Item> newItems = GetItems(toAdd, true);
+                    await Slim.WaitAsync();
+                    try
+                    {
+                        int tmpCount = Collection.Count;
+                        int toAdd = Generate.RandomNumber(10, 20);
+                        List<TestItem> newItems = await GetItems(toAdd);
 
-                    Collection.AddRange(newItems);
-                    if (Collection.Count != (tmpCount + toAdd))
-                        Assert.Fail("The count is not the expected count");
+                        Collection.AddRange(newItems);
+                        if (Collection.Count != (tmpCount + toAdd))
+                            Assert.Fail("The count is not the expected count");
 
-                    int removedCount = Collection.RemoveAll(x => newItems.Contains(x));
-                    if (removedCount != toAdd)
-                        Assert.Fail("Did not remove the expected amount");
-                    else if (Collection.Any(x => newItems.Contains(x)))
-                        Assert.Fail("Not all of the expected elements have been removed");
-                }
+                        int removedCount = Collection.RemoveAll(x => newItems.Contains(x));
+                        if (removedCount != toAdd)
+                            Assert.Fail("Did not remove the expected amount");
+                        else if (Collection.Any(x => newItems.Contains(x)))
+                            Assert.Fail("Not all of the expected elements have been removed");
+                    }
+                    finally
+                    {
+                        Slim.Release();
+                    }
+                });
             });
 
+            await Task.WhenAll(tasks);
             if (Collection.Count != oldCount)
                 Assert.Fail("Collection does not have the expected count after the removal");
 
@@ -601,7 +670,11 @@ namespace Tests
             Collection.Clear();
             Collection.CollectionChanged += EventListener;
 
-            FillCollection(false, true);
+            List<TestItem> items = await GetItems(TestOptions.Total);
+            foreach (TestItem item in items)
+                Collection.Add(item);
+
+            await FillCollection();
             await WaitForEventListener();
 
             int oldCount = Collection.Count;
@@ -624,7 +697,7 @@ namespace Tests
             else if (EventCalls.Any(x => x.Args?.Action != NotifyCollectionChangedAction.Remove))
                 Assert.Fail("The event calls list does not contain only the expected event actions (Remove)");
 
-            FillCollection(false, true);
+            await FillCollection();
             await WaitForEventListener();
 
             oldCount = Collection.Count;
@@ -639,7 +712,7 @@ namespace Tests
 
             EventCalls.Clear();
             Collection.CollectionChanged -= EventListener;
-            FillCollection(false, true);
+            await FillCollection();
 
             if (EventCalls.Count != 0)
                 Assert.Fail("The event calls list contains item(s) despite the event listener being removed");
@@ -653,8 +726,8 @@ namespace Tests
             Collection.Clear();
             Collection.CollectionChanged += EventListener;
 
-            ConcurrentBag<Item> items = [.. GetItems(_testOptions.Total, true)];
-            Parallel.For(0, items.Count, _parallelOptions, index =>
+            ConcurrentBag<TestItem> items = [.. await GetItems(TestOptions.Total)];
+            Parallel.For(0, items.Count, ParallelOptions, index =>
             {
                 Collection.Add(items.ElementAt(index));
             });
@@ -674,72 +747,94 @@ namespace Tests
 
         private string GetId(bool unique)
         {
-            string id = Item.GetId(_faker);
+            string id = TestItem.GetId(Faker);
             while (unique && Collection.Any(x => x.Id == id))
-                id = Item.GetId(_faker);
+                id = TestItem.GetId(Faker);
 
             return id;
         }
 
-        private ItemValue GetValue(bool unique)
+        private TestItemValue GetValue(bool unique)
         {
-            ItemValue value = new(_faker);
+            TestItemValue value = new(Faker);
             while (unique && Collection.Any(x => x.Value == value))
-                value = new ItemValue(_faker);
+                value = new TestItemValue(Faker);
 
             return value;
         }
 
-        private Item GetItem(bool unique)
+        private TestItem GetItem(bool unique)
             => new(GetId(unique), GetValue(unique));
 
-        private List<Item> GetItems(int count, bool unique)
+        private static async Task<List<TestItem>> GetItems(int count)
         {
-            ConcurrentBag<Item> result = [];
+            await FillReserve(count);
 
-            for (int i = 0; i < count; i++)
-                result.Add(GetItem(unique));
+            List<TestItem> result;
+            lock (Reserve)
+            {
+                result = [.. Reserve.Take(count)];
+                Reserve.RemoveAll(result);
+            }
 
-            return [.. result];
+            return result;
         }
 
-        private void FillCollection(bool parallel, bool unique = true, int? count = null)
+        private async Task FillCollection(bool unique = true, int? count = null)
         {
-            count ??= _testOptions.Total;
-            if (Collection.Count != 0)
+            count ??= TestOptions.Total;
+            lock (Collection)
             {
-                if (unique)
+                if (Collection.Count != 0)
                 {
-                    List<Item> duplicates = [.. Collection.GroupBy(x => x).Where(g => g.Count() > 1).Select(y => y.Key)];
-                    Collection.RemoveAll(duplicates.Contains);
+                    if (unique)
+                    {
+                        List<TestItem> duplicates = [.. Collection.GroupBy(x => x).Where(g => g.Count() > 1).Select(y => y.Key)];
+                        Collection.RemoveAll(duplicates.Contains);
+                    }
+
+                    if (Collection.Count > count)
+                    {
+                        int remove = Collection.Count - (int)count;
+                        for (int i = 0; i < remove; i++)
+                            Collection.Remove(Collection[i]);
+                    }
+
+                    if (Collection.Count == count)
+                        return;
+                    else if (count == TestOptions.Total)
+                        count -= Collection.Count;
                 }
-
-                if (Collection.Count > count)
-                {
-                    int remove = Collection.Count - (int)count;
-                    for (int i = 0; i < remove; i++)
-                        Collection.Remove(Collection[i]);
-                }
-
-                if (Collection.Count == count)
-                    return;
-                else if (count == _testOptions.Total)
-                    count -= Collection.Count;
             }
 
-            ConcurrentBag<Item> items = [.. GetItems((int)count, unique)];
-            if (parallel)
+            await FillReserve((int)count);
+            List<TestItem> items = [.. Reserve.Take((int)count)];
+
+            lock (Reserve) lock (Collection)
             {
-                Parallel.For(0, (int)count, _parallelOptions, i =>
-                {
-                    Collection.Add(items.ElementAt(i));
-                });
+                Reserve.RemoveAll(items);
+                Collection.AddRange(items);
             }
-            else
+        }
+
+#pragma warning disable NUnit1028 // The non-test method is public
+        internal static async Task FillReserve(int? count = null, Faker? faker = null)
+#pragma warning restore NUnit1028 // The non-test method is public
+        {
+            lock (Reserve) lock (Collection)
             {
-                for (int i = 0; i < count; i++)
-                    Collection.Add(items.ElementAt(i));
+                faker ??= new Faker();
+                if (Reserve.Count == 0 || Reserve.Count <= count)
+                    Reserve.AddRange(Generate.TestItems(faker: faker));
+
+                List<TestItem> dups = [.. Reserve.GroupBy(x => x).Where(g => g.Count() > 1).Select(y => y.Key)];
+                dups.AddRange(Reserve.Where(Collection.Contains));
+
+                Reserve.RemoveAll(dups);
             }
+
+            if (count >= Reserve.Count)
+                await FillReserve(count - Reserve.Count, faker);
         }
 
         private void EventListener(object? sender, NotifyCollectionChangedEventArgs e)

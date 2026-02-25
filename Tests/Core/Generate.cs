@@ -1,9 +1,30 @@
 ﻿using Bogus;
+using System.Collections.Concurrent;
+using Tests.Models;
 
 namespace Tests.Core
 {
     internal class Generate
     {
+        private static readonly ParallelOptions _parallelOptions = new() 
+        { 
+            MaxDegreeOfParallelism = Environment.ProcessorCount < 4 ? Environment.ProcessorCount : 4
+        };
+
+        internal static List<TestItem> TestItems(int? count = null, Faker? faker = null)
+        {
+            faker ??= new Faker();
+            count ??= Main.TestOptions.Total * 20;
+            ConcurrentBag<TestItem> result = [];
+
+            Parallel.For(0, (int)count, _parallelOptions, i =>
+            {
+                result.Add(new TestItem(faker));
+            });
+
+            return [.. result];
+        }
+
         internal static int RandomNumber(int? min = null, int? max = null, IEnumerable<int>? exclude = null, Faker? faker = null)
         {
             min ??= int.MinValue;

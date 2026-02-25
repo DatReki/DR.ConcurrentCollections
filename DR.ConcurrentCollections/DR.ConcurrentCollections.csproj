@@ -22,8 +22,8 @@
 
   <ItemGroup>
     <None Include="README.md" Pack="true" PackagePath="\" />
-    <PackageReference Include="Backport.System.Threading.Lock" Version="3.1.5" />
-    <PackageReference Include="System.Collections.Immutable" Version="10.0.1" />  
+    <PackageReference Include="Backport.System.Threading.Lock" Version="3.1.6" />
+    <PackageReference Include="System.Collections.Immutable" Version="10.0.3" />  
     <Using Condition="$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net9.0'))" Alias="Lock" Include="System.Threading.Lock" />
     <Using Condition="!$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net9.0'))" Alias="Lock" Include="Backport.System.Threading.Lock" />
     <Using Alias="LockFactory" Include="Backport.System.Threading.LockFactory" />
